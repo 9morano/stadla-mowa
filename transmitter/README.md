@@ -1,0 +1,3 @@
+# Opis
+
+Koda za dalinc
