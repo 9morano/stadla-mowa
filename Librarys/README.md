@@ -1,0 +1,1 @@
+Sketch > Include Library > Add .ZIP Library
