@@ -57,7 +57,9 @@ void loop() {
         radio.failureDetected = false;
         delay(250);
         Serial.println("Radio failure detected, restarting radio");
-        MOWA_radio_reset();        
+        MOWA_radio_reset();
+        delay(100);    
+        radioNotAvailable = 0;    
     }
 
     // If we received any packet, read it
@@ -89,8 +91,12 @@ void loop() {
         dataTx.joystick[1] = dataRx.joystick[1];
 
         ack = radio.write(&dataTx, sizeof(dataTx));
-        Serial.print("Respond :");
-        Serial.println(ack);
+
+    #if DEBUG
+        if(!ack){
+            Serial.println("------- No ACK");
+        }
+    #endif
 
         // A bit of delay to receive ACK
         SHITTY_RADIO_DELAY();
@@ -130,7 +136,8 @@ void loop() {
     if(millis() - noRadioTimer  > 200){
         Serial.print("----- CRITICAL WARNING");
         Serial.println(radioNotAvailable);
-        radio.failureDetected = true;
+        radio.failureDetected = true;       //TODO dont reset radio everytime...just every 5th time?
+        // Or if you reset it everytime, put a bigger delay here, because it resets 2 or 3 times before it gets somethuing from transmitter
     }
 #endif
 

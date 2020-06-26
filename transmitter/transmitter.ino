@@ -94,8 +94,9 @@ void loop()
     ack = radio.write(&dataTx, sizeof(dataTx));
 
 #if DEBUG
-    Serial.print("Transmitt :");
-    Serial.println(ack);
+    if(!ack){
+        Serial.println("------- No ACK");
+    }
 #endif
 
     // A bit of delay to receive ACK 
@@ -113,7 +114,7 @@ void loop()
     // Wait for response - with timeout if no response
     while (!radio.available()){                 
       if (micros() - started_waiting_at > RESPONSE_TIMEOUT){
-          Serial.println("No response");
+          Serial.println("------- No response");
           response = 0;
           break;
       }      
