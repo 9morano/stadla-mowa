@@ -1,6 +1,6 @@
 /*
  *
- * 
+ *
  *
  *
 */
@@ -16,11 +16,13 @@
 // Because of shitty radio I added delays between state transitions and ACK reception
 #define SHITTY_RADIO_DELAY()   delay(5);
 
-#define RESPONSE_TIMEOUT    200000  // in us
+#define RESPONSE_TIMEOUT    150000  // in us
 #define RADIO_CHECK_TIME    5000    // in ms
 #define PIN_JOYSTICK_X      A0
 #define PIN_JOYSTICK_Y      A1
+
 #define DEBUG               1
+#define TEST                0
 
 
 uint32_t rxTimestamp, txTimestamp;
@@ -31,15 +33,17 @@ uint32_t radioChekcTimer;
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
 
+
+// TODO why only float works, uint32_t displays random shit after number 9..
 struct dataStruct{
-    float valX = 512;          // TODO why only float works, uint32_t displays random shit after number 9..
-    float valY = 512;
+    float joystick[2];      // joystick[0] = X, joystick[1] = Y
 } dataRx, dataTx;
 
 
 void     MOWA_radio_reset();
 uint32_t MOWA_radio_check();
 
+void     MOWA_joystick_get();
 
 
 
@@ -76,22 +80,23 @@ void loop()
     // Set module as transmitter
     radio.stopListening();
 
-    // Get the values from joystick
-    dataTx.valX = analogRead(PIN_JOYSTICK_X);
-    dataTx.valY = analogRead(PIN_JOYSTICK_Y);
+    MOWA_joystick_get();
 
 #if DEBUG
     Serial.print("X =");
-    Serial.print(dataTx.valX);
+    Serial.print(dataTx.joystick[0]);
     Serial.print("Y =");
-    Serial.println(dataTx.valY);
+    Serial.println(dataTx.joystick[1]);
 #endif
 
     // Send the data
     txTimestamp = micros();
     ack = radio.write(&dataTx, sizeof(dataTx));
+
+#if DEBUG
     Serial.print("Transmitt :");
     Serial.println(ack);
+#endif
 
     // A bit of delay to receive ACK 
     SHITTY_RADIO_DELAY();
@@ -119,14 +124,14 @@ void loop()
         radio.read(&dataRx, sizeof(dataRx));
         rxTimestamp = micros();
 
-        if( (dataRx.valX != dataTx.valX) || (dataRx.valY != dataTx.valY) ){
-            Serial.println("DATA NOT THE SAME!");
+        if( (dataRx.joystick[0] != dataTx.joystick[0]) || (dataRx.joystick[1] != dataTx.joystick[1]) ){
+            Serial.println("--------------DATA NOT THE SAME!");
             response = 0;
         }
 
     #if DEBUG
-        Serial.print("Round-trip delay:");
-        Serial.println(rxTimestamp - txTimestamp);
+        //Serial.print("Round-trip delay:");
+        //Serial.println(rxTimestamp - txTimestamp);
     #endif
 
         /* TODO test it on the end
@@ -138,13 +143,13 @@ void loop()
         }*/
     }
 
-/*
-#if DEBUG
+
+#if TEST
     delay(1000);
 #else
     delay(50);
 #endif
-*/
+
 }
 
 
@@ -190,4 +195,65 @@ uint32_t MOWA_radio_check(){
     }
 
     return millis();
+}
+
+void MOWA_joystick_get(){
+
+    int joystickReadingX, joystickReadingY;
+
+    // Get the values from joystick X
+    joystickReadingX = analogRead(PIN_JOYSTICK_X);
+    
+    // Stay still
+    if(joystickReadingX > 400 && joystickReadingX < 600){
+        dataTx.joystick[0] = 0;
+    } 
+    // Turn right
+    else if (joystickReadingX >= 600){
+        // Determine speed
+        if(joystickReadingX < 1000){
+            dataTx.joystick[0] = 1;
+        }
+        else{
+            dataTx.joystick[0] = 2;
+        }
+    }
+    // Turn left
+    else if(joystickReadingX <= 400){
+        // Determine speed
+        if(joystickReadingX > 50){
+            dataTx.joystick[0] = -1;
+        }
+        else{
+            dataTx.joystick[0] = -2;
+        }
+    }
+
+    // Get the values from joystick X
+    joystickReadingY = analogRead(PIN_JOYSTICK_Y);
+
+    // Stay still
+    if(joystickReadingY > 400 && joystickReadingY < 600){
+        dataTx.joystick[1] = 0;
+    } 
+    // Go forward
+    else if (joystickReadingY >= 600){
+        // Determine speed
+        if(joystickReadingY < 1000){
+            dataTx.joystick[1] = 1;
+        }
+        else{
+            dataTx.joystick[1] = 2;
+        }
+    }
+    // Go backwards
+    else if(joystickReadingY <= 400){
+        // Determine speed
+        if(joystickReadingY > 50){
+            dataTx.joystick[1] = -1;
+        }
+        else{
+            dataTx.joystick[1] = -2;
+        }
+    }
 }

@@ -7,19 +7,20 @@
 #define SHITTY_RADIO_DELAY()   delay(5);
 
 #define RADIO_CHECK_TIME    5000    // in ms
+#define DEBUG               1
+#define TEST                0
 
 
 uint32_t radioChekcTimer;
 uint32_t radioNotAvailable = 1;
-uint32_t noRadioTiming;
+uint32_t noRadioTimer;
 
 
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
 
 struct dataStruct{
-    float valX;
-    float valY;
+    float joystick[2];      // joystick[0] = X, joystick[1] = Y
 } dataRx, dataTx;
 
 
@@ -47,7 +48,6 @@ void loop() {
     uint8_t ack;
 
     // Every x seconds verify the configuration of the radio.
-    // If something is wrong, reset it
     if(millis() - radioChekcTimer > RADIO_CHECK_TIME){
        radioChekcTimer = MOWA_radio_check();
     }
@@ -60,18 +60,20 @@ void loop() {
         MOWA_radio_reset();        
     }
 
-    // If we have any packet in the buffer
+    // If we received any packet, read it
     if (radio.available())
     {
         radioNotAvailable = 0;
 
         // Read the received data
         radio.read(&dataRx, sizeof(dataRx));
-        //Serial.print(data.cmd);
+
+    #if DEBUG
         Serial.print("X =");
-        Serial.print(dataRx.valX);
+        Serial.print(dataTx.joystick[0]);
         Serial.print("Y =");
-        Serial.println(dataRx.valY);
+        Serial.println(dataTx.joystick[1]);
+    #endif
 
         // Wait a bit to transmit ACK till the end
         SHITTY_RADIO_DELAY();
@@ -83,8 +85,8 @@ void loop() {
         SHITTY_RADIO_DELAY();
 
         // Send response back to RC - same values as conformation
-        dataTx.valX = dataRx.valX;
-        dataTx.valY = dataRx.valY;
+        dataTx.joystick[0] = dataRx.joystick[0];
+        dataTx.joystick[1] = dataRx.joystick[1];
 
         ack = radio.write(&dataTx, sizeof(dataTx));
         Serial.print("Respond :");
@@ -105,17 +107,34 @@ void loop() {
         }
         */
     }
-    else{
+    else
+    {
         radioNotAvailable ++;
     }
 
+
+    // If we received some data
     if(radioNotAvailable == 0){
-        noRadioTiming = millis();
+        // Every time we receive something, reset the timer
+        noRadioTimer = millis();
     }
 
-    if(millis() - noRadioTiming  > 500){
+    // If radio is not avaliable for some time, something is wrong with transmitter
+#if TEST
+    if(millis() - noRadioTimer  > 500){
+        Serial.print("----- CRITICAL WARNING");
         Serial.println(radioNotAvailable);
+        radio.failureDetected = true;
     }
+#else
+    if(millis() - noRadioTimer  > 200){
+        Serial.print("----- CRITICAL WARNING");
+        Serial.println(radioNotAvailable);
+        radio.failureDetected = true;
+    }
+#endif
+
+
 }
 
 
