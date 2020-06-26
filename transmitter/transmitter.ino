@@ -18,8 +18,9 @@
 
 #define RESPONSE_TIMEOUT    200000  // in us
 #define RADIO_CHECK_TIME    5000    // in ms
-
-
+#define PIN_JOYSTICK_X      A0
+#define PIN_JOYSTICK_Y      A1
+#define DEBUG               1
 
 
 uint32_t rxTimestamp, txTimestamp;
@@ -31,9 +32,9 @@ uint32_t radioChekcTimer;
 RF24 radio(9, 8);  // CE, CSN
 
 struct dataStruct{
-    char cmd[4];
-    float val;
-} data;
+    float valX = 512;          // TODO why only float works, uint32_t displays random shit after number 9..
+    float valY = 512;
+} dataRx, dataTx;
 
 
 void     MOWA_radio_reset();
@@ -51,12 +52,6 @@ void setup()
 
     MOWA_radio_reset();
 
-    data.cmd[0]='c';
-    data.cmd[1] ='m';
-    data.cmd[2] ='d';
-    data.cmd[3] =' ';
-    data.val = 1;
-
     radioChekcTimer = millis();
 }
 
@@ -64,12 +59,12 @@ void loop()
 {
     uint8_t ack, response;
 
-    // Every x seconds verify the configuration of the radio. If something is wrong, reset it
+    // Every x seconds verify the configuration of the radio.
     if(millis() - radioChekcTimer > RADIO_CHECK_TIME){
        radioChekcTimer = MOWA_radio_check();
     }
 
-    // If faliure detected, reset it
+    // If radio failure detected, reset it
     if(radio.failureDetected){
         radio.failureDetected = false;
         delay(250);
@@ -77,12 +72,24 @@ void loop()
         MOWA_radio_reset();        
     }
 
+
     // Set module as transmitter
     radio.stopListening();
 
+    // Get the values from joystick
+    dataTx.valX = analogRead(PIN_JOYSTICK_X);
+    dataTx.valY = analogRead(PIN_JOYSTICK_Y);
+
+#if DEBUG
+    Serial.print("X =");
+    Serial.print(dataTx.valX);
+    Serial.print("Y =");
+    Serial.println(dataTx.valY);
+#endif
+
     // Send the data
     txTimestamp = micros();
-    ack = radio.write(&data, sizeof(data));
+    ack = radio.write(&dataTx, sizeof(dataTx));
     Serial.print("Transmitt :");
     Serial.println(ack);
 
@@ -109,13 +116,18 @@ void loop()
 
     // Dont read data if no response
     if(response){
-        radio.read(&data, sizeof(data));
+        radio.read(&dataRx, sizeof(dataRx));
         rxTimestamp = micros();
 
-        Serial.print(data.cmd);
-        Serial.println(data.val);
+        if( (dataRx.valX != dataTx.valX) || (dataRx.valY != dataTx.valY) ){
+            Serial.println("DATA NOT THE SAME!");
+            response = 0;
+        }
+
+    #if DEBUG
         Serial.print("Round-trip delay:");
         Serial.println(rxTimestamp - txTimestamp);
+    #endif
 
         /* TODO test it on the end
         if(radio.available()){
@@ -126,10 +138,13 @@ void loop()
         }*/
     }
 
-
+/*
+#if DEBUG
     delay(1000);
-    data.val ++;
-
+#else
+    delay(50);
+#endif
+*/
 }
 
 

@@ -10,15 +10,17 @@
 
 
 uint32_t radioChekcTimer;
+uint32_t radioNotAvailable = 1;
+uint32_t noRadioTiming;
 
 
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
 
 struct dataStruct{
-    char cmd[4];
-    float val;
-} data;
+    float valX;
+    float valY;
+} dataRx, dataTx;
 
 
 
@@ -37,7 +39,7 @@ void setup()
 
     MOWA_radio_reset();
 
-    
+
 }
 
 void loop() {
@@ -61,10 +63,15 @@ void loop() {
     // If we have any packet in the buffer
     if (radio.available())
     {
+        radioNotAvailable = 0;
+
         // Read the received data
-        radio.read(&data, sizeof(data));
-        Serial.print(data.cmd);
-        Serial.println(data.val);
+        radio.read(&dataRx, sizeof(dataRx));
+        //Serial.print(data.cmd);
+        Serial.print("X =");
+        Serial.print(dataRx.valX);
+        Serial.print("Y =");
+        Serial.println(dataRx.valY);
 
         // Wait a bit to transmit ACK till the end
         SHITTY_RADIO_DELAY();
@@ -75,8 +82,11 @@ void loop() {
         // Wait a bit for state transition
         SHITTY_RADIO_DELAY();
 
-        // Send response back to RC
-        ack = radio.write(&data, sizeof(data));
+        // Send response back to RC - same values as conformation
+        dataTx.valX = dataRx.valX;
+        dataTx.valY = dataRx.valY;
+
+        ack = radio.write(&dataTx, sizeof(dataTx));
         Serial.print("Respond :");
         Serial.println(ack);
 
@@ -94,6 +104,17 @@ void loop() {
             radio.failureDetected = true;
         }
         */
+    }
+    else{
+        radioNotAvailable ++;
+    }
+
+    if(radioNotAvailable == 0){
+        noRadioTiming = millis();
+    }
+
+    if(millis() - noRadioTiming  > 500){
+        Serial.println(radioNotAvailable);
     }
 }
 
