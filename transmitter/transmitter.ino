@@ -19,41 +19,25 @@
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
 
-// Address through which two modules communicate.
-byte addresses[][6] = {"1Node","2Node"};
-
 struct dataStruct{
     char cmd[4];
     float val;
 } data;
 
-unsigned long tx_timestamp, rx_timestamp;
+unsigned long rxTimestamp, txTimestamp;
+
+
+void MOWA_radio_reset();
+
 
 void setup()
-{
+{  
+    // Power-up delay
     delay(100);
     Serial.begin(115200);
     Serial.println("Transmitter!");
 
-    radio.begin();
-
-    // Set channel (0-125)
-    radio.setChannel(20);
-    // Enabled by default
-    radio.setAutoAck(1);
-    // Transmission power
-    radio.setPALevel(RF24_PA_MAX);
-    // Possible RF24_1MBPS and RF24_250KBPS
-    radio.setDataRate(RF24_1MBPS);
-    // Max CRC size
-    radio.setCRCLength(RF24_CRC_16);
-
-    // Set the address...one for transmitting one for receiving
-    radio.openWritingPipe(addresses[0]);
-    radio.openReadingPipe(1,addresses[1]);
-
-    //Set module as transmitter
-    radio.stopListening();
+    MOWA_radio_reset();
 
     data.cmd[0]='c';
     data.cmd[1] ='m';
@@ -70,7 +54,7 @@ void loop()
     radio.stopListening();
 
     // Send the data
-    tx_timestamp = micros();
+    txTimestamp = micros();
     ack = radio.write(&data, sizeof(data));
     Serial.print("Transmitt :");
     Serial.println(ack);
@@ -99,16 +83,43 @@ void loop()
     // Dont read data if no response
     if(response){
         radio.read(&data, sizeof(data));
-        rx_timestamp = micros();
+        rxTimestamp = micros();
 
         Serial.print(data.cmd);
         Serial.println(data.val);
         Serial.print("Round-trip delay:");
-        Serial.println(rx_timestamp - tx_timestamp);
+        Serial.println(rxTimestamp - txTimestamp);
     }
 
 
     delay(1000);
     data.val ++;
 
+}
+
+
+void MOWA_radio_reset(){
+
+    // Address through which two modules communicate.
+    byte addresses[][6] = {"1Node","2Node"};
+
+    radio.begin();
+
+    // Set channel (0-125)
+    radio.setChannel(20);
+    // Enabled by default
+    radio.setAutoAck(1);
+    // Transmission power
+    radio.setPALevel(RF24_PA_MAX);
+    // Possible RF24_1MBPS and RF24_250KBPS
+    radio.setDataRate(RF24_1MBPS);
+    // Max CRC size
+    radio.setCRCLength(RF24_CRC_16);
+
+    // Set the address...one for transmitting one for receiving
+    radio.openWritingPipe(addresses[0]);
+    radio.openReadingPipe(1,addresses[1]);
+
+    //Set module as transmitter
+    radio.stopListening();
 }

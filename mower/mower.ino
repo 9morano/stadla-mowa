@@ -7,39 +7,24 @@
 RF24 radio(9, 8);  // CE, CSN
 
 
-// Address through which two modules communicate.
-byte addresses[][6] = {"1Node","2Node"};
-
 struct dataStruct{
     char cmd[4];
     float val;
 } data;
 
+
+void MOWA_radio_reset();
+
 void setup()
 {
+    // Power-up delay
     delay(100);
     Serial.begin(115200);
     Serial.println("Mower!");
 
-    radio.begin();
+    MOWA_radio_reset();
 
-    // Set channel (0-125)
-    radio.setChannel(20);
-    // Enabled by default
-    radio.setAutoAck(1);
-    // Transmission power
-    radio.setPALevel(RF24_PA_MAX);
-    // Possible RF24_1MBPS and RF24_250KBPS
-    radio.setDataRate(RF24_1MBPS);
-    // Max CRC size
-    radio.setCRCLength(RF24_CRC_16);
-
-    //set the address
-    radio.openReadingPipe(1, addresses[0]);
-    radio.openWritingPipe(addresses[1]);
-
-    //Set module as receiver
-    radio.startListening();
+    
 }
 
 void loop() {
@@ -73,4 +58,30 @@ void loop() {
         // Back to receiving mode
         radio.startListening();
     }
+}
+
+void MOWA_radio_reset(){
+
+    // Address through which two modules communicate.
+    byte addresses[][6] = {"1Node","2Node"};
+
+    radio.begin();
+
+    // Set channel (0-125)
+    radio.setChannel(20);
+    // Enabled by default
+    radio.setAutoAck(1);
+    // Transmission power
+    radio.setPALevel(RF24_PA_MAX);
+    // Possible RF24_1MBPS and RF24_250KBPS
+    radio.setDataRate(RF24_1MBPS);
+    // Max CRC size
+    radio.setCRCLength(RF24_CRC_16);
+
+    //set the address
+    radio.openReadingPipe(1, addresses[0]);
+    radio.openWritingPipe(addresses[1]);
+
+    //Set module as receiver
+    radio.startListening();
 }
