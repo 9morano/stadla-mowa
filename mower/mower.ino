@@ -3,9 +3,15 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
+
+#define RADIO_CHECK_TIME    5000    // in ms
+
+
+uint32_t radioChekcTimer;
+
+
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
-
 
 struct dataStruct{
     char cmd[4];
@@ -13,7 +19,12 @@ struct dataStruct{
 } data;
 
 
-void MOWA_radio_reset();
+
+
+void     MOWA_radio_reset();
+uint32_t MOWA_radio_check();
+
+
 
 void setup()
 {
@@ -31,6 +42,21 @@ void loop() {
 
     uint8_t ack;
 
+    // Every x seconds verify the configuration of the radio.
+    // If something is wrong, reset it
+    if(millis() - radioChekcTimer > RADIO_CHECK_TIME){
+       radioChekcTimer = MOWA_radio_check();
+    }
+
+    // If faliure detected, reset it
+    if(radio.failureDetected){
+        radio.failureDetected = false;
+        delay(250);
+        Serial.println("Radio failure detected, restarting radio");
+        MOWA_radio_reset();        
+    }
+
+    // If we have any packet in the buffer
     if (radio.available())
     {
         // Read the received data
@@ -60,6 +86,13 @@ void loop() {
     }
 }
 
+
+
+
+
+
+
+
 void MOWA_radio_reset(){
 
     // Address through which two modules communicate.
@@ -84,4 +117,14 @@ void MOWA_radio_reset(){
 
     //Set module as receiver
     radio.startListening();
+}
+
+uint32_t MOWA_radio_check(){
+
+    if(radio.getDataRate() != RF24_1MBPS){
+      radio.failureDetected = true;
+      Serial.print("Radio configuration error detected");
+    }
+
+    return millis();
 }

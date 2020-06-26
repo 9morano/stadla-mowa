@@ -14,7 +14,15 @@
 #include <RF24.h>
 
 
-#define RESPONSE_TIMEOUT    200000
+
+#define RESPONSE_TIMEOUT    200000  // in us
+#define RADIO_CHECK_TIME    5000    // in ms
+
+
+uint32_t rxTimestamp, txTimestamp;
+uint32_t radioChekcTimer;
+
+
 
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
@@ -24,10 +32,11 @@ struct dataStruct{
     float val;
 } data;
 
-unsigned long rxTimestamp, txTimestamp;
+
+void     MOWA_radio_reset();
+uint32_t MOWA_radio_check();
 
 
-void MOWA_radio_reset();
 
 
 void setup()
@@ -44,11 +53,27 @@ void setup()
     data.cmd[2] ='d';
     data.cmd[3] =' ';
     data.val = 1;
+
+    radioChekcTimer = millis();
 }
 
 void loop()
 {
     uint8_t ack, response;
+
+    // Every x seconds verify the configuration of the radio.
+    // If something is wrong, reset it
+    if(millis() - radioChekcTimer > RADIO_CHECK_TIME){
+       radioChekcTimer = MOWA_radio_check();
+    }
+
+    // If faliure detected, reset it
+    if(radio.failureDetected){
+        radio.failureDetected = false;
+        delay(250);
+        Serial.println("Radio failure detected, restarting radio");
+        MOWA_radio_reset();        
+    }
 
     // Set module as transmitter
     radio.stopListening();
@@ -98,6 +123,14 @@ void loop()
 }
 
 
+
+
+
+
+
+
+
+
 void MOWA_radio_reset(){
 
     // Address through which two modules communicate.
@@ -122,4 +155,14 @@ void MOWA_radio_reset(){
 
     //Set module as transmitter
     radio.stopListening();
+}
+
+uint32_t MOWA_radio_check(){
+
+    if(radio.getDataRate() != RF24_1MBPS){
+      radio.failureDetected = true;
+      Serial.print("Radio configuration error detected");
+    }
+
+    return millis();
 }
