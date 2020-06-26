@@ -1,6 +1,6 @@
 /*
  *
- * Because of shitty radio I added delays between state transitions.
+ * 
  *
  *
 */
@@ -13,10 +13,13 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
-
+// Because of shitty radio I added delays between state transitions and ACK reception
+#define SHITTY_RADIO_DELAY()   delay(5);
 
 #define RESPONSE_TIMEOUT    200000  // in us
 #define RADIO_CHECK_TIME    5000    // in ms
+
+
 
 
 uint32_t rxTimestamp, txTimestamp;
@@ -61,8 +64,7 @@ void loop()
 {
     uint8_t ack, response;
 
-    // Every x seconds verify the configuration of the radio.
-    // If something is wrong, reset it
+    // Every x seconds verify the configuration of the radio. If something is wrong, reset it
     if(millis() - radioChekcTimer > RADIO_CHECK_TIME){
        radioChekcTimer = MOWA_radio_check();
     }
@@ -85,13 +87,13 @@ void loop()
     Serial.println(ack);
 
     // A bit of delay to receive ACK 
-    delay(10);
+    SHITTY_RADIO_DELAY();
 
     // Set to receiver mode
     radio.startListening();
 
     // Wait a bit for state transition
-    delay(10);
+    SHITTY_RADIO_DELAY();
 
     unsigned long started_waiting_at = micros();
     response = 1;
@@ -114,6 +116,14 @@ void loop()
         Serial.println(data.val);
         Serial.print("Round-trip delay:");
         Serial.println(rxTimestamp - txTimestamp);
+
+        /* TODO test it on the end
+        if(radio.available()){
+            // TODO Not sure if this is OK --> if we call this even before radio reads the data
+            // If radio.available() returns 1 more times, even after we read the data, there is something wrong
+            Serial.println("--ERROR-------");
+            radio.failureDetected = true;
+        }*/
     }
 
 

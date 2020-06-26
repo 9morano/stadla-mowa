@@ -4,6 +4,8 @@
 #include <RF24.h>
 
 
+#define SHITTY_RADIO_DELAY()   delay(5);
+
 #define RADIO_CHECK_TIME    5000    // in ms
 
 
@@ -65,13 +67,13 @@ void loop() {
         Serial.println(data.val);
 
         // Wait a bit to transmit ACK till the end
-        delay(10);
+        SHITTY_RADIO_DELAY();
 
         // Set to transmitter mode
         radio.stopListening();
 
         // Wait a bit for state transition
-        delay(10);
+        SHITTY_RADIO_DELAY();
 
         // Send response back to RC
         ack = radio.write(&data, sizeof(data));
@@ -79,10 +81,19 @@ void loop() {
         Serial.println(ack);
 
         // A bit of delay to receive ACK
-        delay(10);
+        SHITTY_RADIO_DELAY();
 
         // Back to receiving mode
         radio.startListening();
+
+        /* TODO Test it on the end
+        if(radio.available()){
+            // TODO Not sure if this is OK --> maybe RC already sent something.
+            // If radio.available() returns 1 more times, even after we read the data, there is something wrong
+            Serial.println("--ERROR-------");
+            radio.failureDetected = true;
+        }
+        */
     }
 }
 
