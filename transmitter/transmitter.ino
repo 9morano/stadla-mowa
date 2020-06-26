@@ -1,13 +1,33 @@
+/*
+ *
+ * Because of shitty radio I added delays between state transitions.
+ *
+ *
+*/
+
+
+
+
 //Include Libraries
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 
+
+#define RESPONSE_TIMEOUT    200000
+
 //create an RF24 object
 RF24 radio(9, 8);  // CE, CSN
 
-//address through which two modules communicate.
-const byte address[6] = "00001";
+// Address through which two modules communicate.
+byte addresses[][6] = {"1Node","2Node"};
+
+struct dataStruct{
+    char cmd[4];
+    float val;
+} data;
+
+unsigned long tx_timestamp, rx_timestamp;
 
 void setup()
 {
@@ -17,21 +37,78 @@ void setup()
 
     radio.begin();
 
-    //set the address
-    radio.openWritingPipe(address);
+    // Set channel (0-125)
+    radio.setChannel(20);
+    // Enabled by default
+    radio.setAutoAck(1);
+    // Transmission power
+    radio.setPALevel(RF24_PA_MAX);
+    // Possible RF24_1MBPS and RF24_250KBPS
+    radio.setDataRate(RF24_1MBPS);
+    // Max CRC size
+    radio.setCRCLength(RF24_CRC_16);
+
+    // Set the address...one for transmitting one for receiving
+    radio.openWritingPipe(addresses[0]);
+    radio.openReadingPipe(1,addresses[1]);
 
     //Set module as transmitter
     radio.stopListening();
+
+    data.cmd[0]='c';
+    data.cmd[1] ='m';
+    data.cmd[2] ='d';
+    data.cmd[3] =' ';
+    data.val = 1;
 }
+
 void loop()
 {
-    uint8_t ack;
+    uint8_t ack, response;
 
-    //Send message to receiver
-    const char text[] = "Hello World";
-    ack = radio.write(&text, sizeof(text));
+    // Set module as transmitter
+    radio.stopListening();
+
+    // Send the data
+    tx_timestamp = micros();
+    ack = radio.write(&data, sizeof(data));
     Serial.print("Transmitt :");
     Serial.println(ack);
 
+    // A bit of delay to receive ACK 
+    delay(10);
+
+    // Set to receiver mode
+    radio.startListening();
+
+    // Wait a bit for state transition
+    delay(10);
+
+    unsigned long started_waiting_at = micros();
+    response = 1;
+
+    // Wait for response - with timeout if no response
+    while (!radio.available()){                 
+      if (micros() - started_waiting_at > RESPONSE_TIMEOUT){
+          Serial.println("No response");
+          response = 0;
+          break;
+      }      
+    }
+
+    // Dont read data if no response
+    if(response){
+        radio.read(&data, sizeof(data));
+        rx_timestamp = micros();
+
+        Serial.print(data.cmd);
+        Serial.println(data.val);
+        Serial.print("Round-trip delay:");
+        Serial.println(rx_timestamp - tx_timestamp);
+    }
+
+
     delay(1000);
+    data.val ++;
+
 }
