@@ -25,7 +25,7 @@
 #define TEST                0
 
 
-uint32_t rxTimestamp, txTimestamp;
+
 uint32_t radioChekcTimer;
 
 
@@ -36,7 +36,7 @@ RF24 radio(9, 8);  // CE, CSN
 
 // TODO why only float works, uint32_t displays random shit after number 9..
 struct dataStruct{
-    float joystick[2];      // joystick[0] = X, joystick[1] = Y
+    int joystick[2];      // joystick[0] = X, joystick[1] = Y
 } dataRx, dataTx;
 
 
@@ -62,6 +62,7 @@ void setup()
 void loop()
 {
     uint8_t ack, response;
+    uint32_t rxTimestamp, txTimestamp;
 
     // Every x seconds verify the configuration of the radio.
     if(millis() - radioChekcTimer > RADIO_CHECK_TIME){
@@ -83,9 +84,9 @@ void loop()
     MOWA_joystick_get();
 
 #if DEBUG
-    Serial.print("X =");
+    Serial.print("X=");
     Serial.print(dataTx.joystick[0]);
-    Serial.print("Y =");
+    Serial.print(" Y=");
     Serial.println(dataTx.joystick[1]);
 #endif
 
