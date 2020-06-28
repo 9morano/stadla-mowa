@@ -10,6 +10,22 @@
 #define DEBUG               1
 #define TEST                0
 
+#define H1_IN1              1
+#define H1_IN2              1
+#define H1_IN3              1
+#define H1_IN4              1
+#define H1_PWM1             1
+#define H1_PWM2             1
+
+#define H2_IN1              1
+#define H2_IN2              1
+#define H2_IN3              1
+#define H2_IN4              1
+#define H2_PWM1             1   
+#define H2_PWM2             1
+
+
+
 
 uint32_t radioChekcTimer;
 uint32_t radioNotAvailable = 1;
@@ -21,7 +37,7 @@ uint32_t noRadioTimer;
 RF24 radio(9, 8);  // CE, CSN
 
 struct dataStruct{
-    float joystick[2];      // joystick[0] = X, joystick[1] = Y
+    int joystick[2];      // joystick[0] = X, joystick[1] = Y
 } dataRx, dataTx;
 
 
@@ -30,6 +46,12 @@ struct dataStruct{
 void     MOWA_radio_reset();
 uint32_t MOWA_radio_check();
 
+void MOWA_motor_stop(void);
+void MOWA_motor_go(int cmdX, int cmdY);
+uint8_t MOWA_motor_forward(uint8_t speed);
+uint8_t MOWA_motor_backward(uint8_t speed);
+uint8_t MOWA_motor_right(uint8_t speed);
+uint8_t MOWA_motor_left(uint8_t speed);
 
 
 void setup()
@@ -74,9 +96,9 @@ void loop() {
         radio.read(&dataRx, sizeof(dataRx));
 
     #if DEBUG
-        Serial.print("X =");
+        Serial.print("X=");
         Serial.print(dataTx.joystick[0]);
-        Serial.print("Y =");
+        Serial.print(" Y=");
         Serial.println(dataTx.joystick[1]);
     #endif
 
@@ -116,6 +138,7 @@ void loop() {
         }
         */
     }
+    // If radio not available
     else
     {
         radioNotAvailable++;
@@ -125,7 +148,7 @@ void loop() {
     // If we received some data
     if(radioNotAvailable == 0){
 
-        Serial.println("Received something");
+        MOWA_motor_go(dataRx.joystick[0], dataRx.joystick[1]);
 
         // Every time we receive something, reset the timer
         noRadioTimer = millis();
@@ -140,11 +163,15 @@ void loop() {
         Serial.print("----- CRITICAL WARNING ");
         Serial.println(radioNotAvailable);
 
+        // Restart the "radio check timer" so it doesn't restart it right again 
+        noRadioTimer = millis();
+
         transmitterNotAvailable++;
 
-        if(transmitterNotAvailable > 5){
+        if(transmitterNotAvailable > 4){
             // After 5 times (second or so) try reseting the radio
-            radio.failureDetected = true;       
+            radio.failureDetected = true;
+            transmitterNotAvailable = 1;      
         }
     }
 
@@ -193,4 +220,219 @@ uint32_t MOWA_radio_check(){
     }
 
     return millis();
+}
+
+void MOWA_motor_stop(void){
+    // Set all inputs to same value to stop the mottor
+    digitalWrite(H1_IN1, LOW);
+    digitalWrite(H1_IN2, LOW);
+    digitalWrite(H1_IN3, LOW);
+    digitalWrite(H1_IN4, LOW);
+    digitalWrite(H2_IN1, LOW);
+    digitalWrite(H2_IN2, LOW);
+    digitalWrite(H2_IN3, LOW);
+    digitalWrite(H2_IN4, LOW);
+
+
+    analogWrite(H1_PWM1, 0);
+    analogWrite(H1_PWM2, 0);
+    analogWrite(H2_PWM1, 0);
+    analogWrite(H2_PWM2, 0);
+}
+
+void MOWA_motor_go(int cmdX, int cmdY){
+
+    if ( (cmdX == 0) && (cmdY == 0) ){
+        MOWA_motor_stop();
+    }
+    else if(cmdY > 0){
+        MOWA_motor_forward(cmdY);
+    }
+    else if(cmdY < 0){
+        MOWA_motor_backward(cmdY);
+    }
+    else if(cmdX > 0){
+        MOWA_motor_right(cmdX);
+    }
+    else if(cmdX < 0){
+        MOWA_motor_left(cmdX);
+    }
+}
+
+
+/*
+ *    H1-bridge
+ * 
+ *     +---------+
+ *     |         |
+ *  M1(in1)    M2(in2)
+ *     |         |
+ *     |         |
+ *     |         |
+ *  M3(in1)    M4(in2)
+ *     |         |
+ *     +---------+
+ * 
+ *     H2-bridge 
+*/ 
+
+// M1, M2, M3, M4 forward
+uint8_t MOWA_motor_forward(uint8_t speed){
+    // Set the speed (PWM)
+    switch(speed){
+        case 1:
+            analogWrite(H1_PWM1, 125);
+            analogWrite(H1_PWM2, 125);
+            analogWrite(H2_PWM1, 125);
+            analogWrite(H2_PWM2, 125);
+            break;
+
+        case 2:
+            analogWrite(H1_PWM1, 225);
+            analogWrite(H1_PWM2, 225);
+            analogWrite(H2_PWM1, 225);
+            analogWrite(H2_PWM2, 225);
+            break;
+        
+        default:
+            MOWA_motor_stop();
+            return 0;
+    }
+    // Set the direction
+    digitalWrite(H1_IN1, HIGH);
+    digitalWrite(H1_IN2, LOW);
+
+    digitalWrite(H1_IN3, HIGH);
+    digitalWrite(H1_IN4, LOW);
+
+    digitalWrite(H2_IN1, HIGH);
+    digitalWrite(H2_IN2, LOW);
+
+    digitalWrite(H2_IN3, HIGH);
+    digitalWrite(H2_IN4, LOW);
+    return 1;
+}
+
+
+// M1, M2, M3, M4 backward
+uint8_t MOWA_motor_backward(uint8_t speed){
+    // Set the speed (PWM)
+    switch(speed){
+        case 1:
+            analogWrite(H1_PWM1, 125);
+            analogWrite(H1_PWM2, 125);
+            analogWrite(H2_PWM1, 125);
+            analogWrite(H2_PWM2, 125);
+            break;
+
+        case 2:
+            analogWrite(H1_PWM1, 225);
+            analogWrite(H1_PWM2, 225);
+            analogWrite(H2_PWM1, 225);
+            analogWrite(H2_PWM2, 225);
+            break;
+        
+        default:
+            MOWA_motor_stop();
+            return 0;
+    }
+
+    // Set the direction
+    digitalWrite(H1_IN1, LOW);
+    digitalWrite(H1_IN2, HIGH);
+
+    digitalWrite(H1_IN3, LOW);
+    digitalWrite(H1_IN4, HIGH);
+
+    digitalWrite(H2_IN1, LOW);
+    digitalWrite(H2_IN2, HIGH);
+
+    digitalWrite(H2_IN3, LOW);
+    digitalWrite(H2_IN4, HIGH);
+}
+
+
+// Speed 1 --> M1 and M3 forward, M2 and M4 slow back
+// Speed 2 --> M1 and M3 forward, M2 and M4 backward
+uint8_t MOWA_motor_right(uint8_t speed){
+
+    // Left motors to max speed
+    analogWrite(H1_PWM1, 225);
+    analogWrite(H2_PWM1, 225);
+
+    switch(speed){
+        case 1:
+            // Right motors slow speed
+            analogWrite(H1_PWM2, 100);
+            analogWrite(H2_PWM2, 100);
+            break;
+        
+        case 2:
+            // Right motors to max speed
+            analogWrite(H1_PWM2, 255);
+            analogWrite(H2_PWM2, 255);
+            break;
+
+        default:
+            MOWA_motor_stop();
+            return 0;
+    }
+
+    // M1
+    digitalWrite(H1_IN1, HIGH);
+    digitalWrite(H1_IN2, LOW);
+    // M3
+    digitalWrite(H2_IN1, HIGH);
+    digitalWrite(H2_IN2, LOW);
+    // M2
+    digitalWrite(H1_IN3, LOW);
+    digitalWrite(H1_IN4, HIGH);
+    // M4
+    digitalWrite(H2_IN3, LOW);
+    digitalWrite(H2_IN4, HIGH);
+
+    return 1;
+}
+
+
+// Speed 1 --> M2 and M4 forward, M1 and M3 slow back
+// Speed 2 --> M2 and M4 forward, M1 and M3 backward
+uint8_t MOWA_motor_left(uint8_t speed){
+
+    // Right motors to max speed
+    analogWrite(H1_PWM2, 225);
+    analogWrite(H2_PWM2, 225);
+    
+    switch(speed){
+        case 1:
+            // Left motors slow speed
+            analogWrite(H1_PWM1, 100);
+            analogWrite(H2_PWM1, 100);
+        
+        case 2:
+            // Left motors to max speed
+            analogWrite(H1_PWM1, 255);
+            analogWrite(H2_PWM1, 255);
+            
+            break;
+
+        default:
+            MOWA_motor_stop();
+            return 0;
+    }
+
+    // M2
+    digitalWrite(H1_IN3, HIGH);
+    digitalWrite(H1_IN4, LOW);
+    // M4
+    digitalWrite(H2_IN3, HIGH);
+    digitalWrite(H2_IN4, LOW);
+    // M1
+    digitalWrite(H1_IN1, LOW);
+    digitalWrite(H1_IN2, HIGH);
+    // M3
+    digitalWrite(H2_IN1, LOW);
+    digitalWrite(H2_IN2, HIGH);
+
+    return 1;
 }
