@@ -13,6 +13,7 @@
 
 uint32_t radioChekcTimer;
 uint32_t radioNotAvailable = 1;
+uint8_t  transmitterNotAvailable = 1;
 uint32_t noRadioTimer;
 
 
@@ -54,12 +55,14 @@ void loop() {
 
     // If faliure detected, reset it
     if(radio.failureDetected){
-        radio.failureDetected = false;
         delay(250);
         Serial.println("Radio failure detected, restarting radio");
         MOWA_radio_reset();
         delay(100);    
-        radioNotAvailable = 0;    
+        radio.failureDetected = false;
+        radioNotAvailable = 0;
+        // Restart the "radio check timer" so it doesn't restart it right again 
+        noRadioTimer = millis();
     }
 
     // If we received any packet, read it
@@ -115,31 +118,36 @@ void loop() {
     }
     else
     {
-        radioNotAvailable ++;
+        radioNotAvailable++;
     }
 
 
     // If we received some data
     if(radioNotAvailable == 0){
+
+        Serial.println("Received something");
+
         // Every time we receive something, reset the timer
         noRadioTimer = millis();
+
+        // Indicate that transmitter is here
+        transmitterNotAvailable = 0;
     }
 
     // If radio is not avaliable for some time, something is wrong with transmitter
-#if TEST
-    if(millis() - noRadioTimer  > 500){
-        Serial.print("----- CRITICAL WARNING");
-        Serial.println(radioNotAvailable);
-        radio.failureDetected = true;
-    }
-#else
+    // Turn off everything and hope for the best
     if(millis() - noRadioTimer  > 200){
-        Serial.print("----- CRITICAL WARNING");
+        Serial.print("----- CRITICAL WARNING ");
         Serial.println(radioNotAvailable);
-        radio.failureDetected = true;       //TODO dont reset radio everytime...just every 5th time?
-        // Or if you reset it everytime, put a bigger delay here, because it resets 2 or 3 times before it gets somethuing from transmitter
+
+        transmitterNotAvailable++;
+
+        if(transmitterNotAvailable > 5){
+            // After 5 times (second or so) try reseting the radio
+            radio.failureDetected = true;       
+        }
     }
-#endif
+
 
 
 }
