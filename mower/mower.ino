@@ -11,20 +11,18 @@
 #define TEST                0
 
 #define H1_IN1              1
-#define H1_IN2              1
-#define H1_IN3              1
-#define H1_IN4              1
-#define H1_PWM1             1
-#define H1_PWM2             1
+#define H1_IN2              2
+#define H1_IN3              3
+#define H1_IN4              4
+#define H1_PWM1             5
+#define H1_PWM2             6
 
-#define H2_IN1              1
-#define H2_IN2              1
-#define H2_IN3              1
-#define H2_IN4              1
-#define H2_PWM1             1   
-#define H2_PWM2             1
-
-
+#define H2_IN1              0
+#define H2_IN2              0
+#define H2_IN3              0
+#define H2_IN4              0
+#define H2_PWM1             0   
+#define H2_PWM2             0
 
 
 uint32_t radioChekcTimer;
@@ -60,6 +58,13 @@ void setup()
     delay(100);
     Serial.begin(115200);
     Serial.println("Mower!");
+
+    pinMode(H1_IN1, OUTPUT);
+    pinMode(H1_IN2, OUTPUT);
+    pinMode(H1_IN3, OUTPUT);
+    pinMode(H1_IN4, OUTPUT);
+    pinMode(H1_PWM1, OUTPUT);
+    pinMode(H1_PWM2, OUTPUT);
 
     MOWA_radio_reset();
 
@@ -148,7 +153,7 @@ void loop() {
     // If we received some data
     if(radioNotAvailable == 0){
 
-        MOWA_motor_go(dataRx.joystick[0], dataRx.joystick[1]);
+        MOWA_motor_go(int(dataRx.joystick[0]), int(dataRx.joystick[1]));
 
         // Every time we receive something, reset the timer
         noRadioTimer = millis();
@@ -249,13 +254,13 @@ void MOWA_motor_go(int cmdX, int cmdY){
         MOWA_motor_forward(cmdY);
     }
     else if(cmdY < 0){
-        MOWA_motor_backward(cmdY);
+        MOWA_motor_backward(abs(cmdY));
     }
     else if(cmdX > 0){
         MOWA_motor_right(cmdX);
     }
     else if(cmdX < 0){
-        MOWA_motor_left(cmdX);
+        MOWA_motor_left(abs(cmdX));
     }
 }
 
@@ -316,13 +321,15 @@ uint8_t MOWA_motor_forward(uint8_t speed){
 
 // M1, M2, M3, M4 backward
 uint8_t MOWA_motor_backward(uint8_t speed){
-    // Set the speed (PWM)
+    // Set the speed (PWM)    
+    
     switch(speed){
         case 1:
             analogWrite(H1_PWM1, 125);
             analogWrite(H1_PWM2, 125);
             analogWrite(H2_PWM1, 125);
             analogWrite(H2_PWM2, 125);
+            Serial.println("Slow back");
             break;
 
         case 2:
@@ -330,6 +337,7 @@ uint8_t MOWA_motor_backward(uint8_t speed){
             analogWrite(H1_PWM2, 225);
             analogWrite(H2_PWM1, 225);
             analogWrite(H2_PWM2, 225);
+            Serial.println("Fast back");
             break;
         
         default:
@@ -402,7 +410,7 @@ uint8_t MOWA_motor_left(uint8_t speed){
     // Right motors to max speed
     analogWrite(H1_PWM2, 225);
     analogWrite(H2_PWM2, 225);
-    
+
     switch(speed){
         case 1:
             // Left motors slow speed
