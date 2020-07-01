@@ -10,19 +10,24 @@
 #define DEBUG               1
 #define TEST                0
 
-#define H1_IN1              1
-#define H1_IN2              2
-#define H1_IN3              3
-#define H1_IN4              4
-#define H1_PWM1             5
-#define H1_PWM2             6
+// H-bridge 1 connections
+#define H1_IN1              31
+#define H1_IN2              33
+#define H1_IN3              35
+#define H1_IN4              37
+#define H1_PWM1             2
+#define H1_PWM2             3
 
-#define H2_IN1              0
-#define H2_IN2              0
-#define H2_IN3              0
-#define H2_IN4              0
-#define H2_PWM1             0   
-#define H2_PWM2             0
+// H-bridge 2 connections
+#define H2_IN1              32
+#define H2_IN2              34
+#define H2_IN3              36
+#define H2_IN4              38
+#define H2_PWM1             4   
+#define H2_PWM2             5
+
+#define PIN_CE              46
+#define PIN_CSN             47
 
 
 uint32_t radioChekcTimer;
@@ -32,7 +37,7 @@ uint32_t noRadioTimer;
 
 
 //create an RF24 object
-RF24 radio(9, 8);  // CE, CSN
+RF24 radio(PIN_CE, PIN_CSN);  // CE, CSN
 
 struct dataStruct{
     int joystick[2];      // joystick[0] = X, joystick[1] = Y
@@ -329,7 +334,6 @@ uint8_t MOWA_motor_backward(uint8_t speed){
             analogWrite(H1_PWM2, 125);
             analogWrite(H2_PWM1, 125);
             analogWrite(H2_PWM2, 125);
-            Serial.println("Slow back");
             break;
 
         case 2:
@@ -337,7 +341,6 @@ uint8_t MOWA_motor_backward(uint8_t speed){
             analogWrite(H1_PWM2, 225);
             analogWrite(H2_PWM1, 225);
             analogWrite(H2_PWM2, 225);
-            Serial.println("Fast back");
             break;
         
         default:
